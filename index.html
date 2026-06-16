@@ -65,24 +65,6 @@
   .btn-sm{padding:8px 14px;font-size:13px;}
 
   /* ---------- Drag overlay ---------- */
-  /* ---------- Auth gate ---------- */
-  .authGate{
-    position:fixed;inset:0;background:var(--bg-soft);display:flex;
-    align-items:center;justify-content:center;z-index:60;padding:20px;
-  }
-  .authCard{
-    width:100%;max-width:340px;background:#fff;border:2px solid var(--line-strong);
-    border-radius:var(--radius-lg);padding:30px 26px;text-align:center;
-  }
-  .authCard h2{font-family:var(--font-display);font-size:20px;margin:14px 0 18px;}
-  .authCard input{
-    width:100%;padding:12px 14px;margin-bottom:10px;border-radius:10px;
-    border:2px solid var(--line-strong);font-family:var(--font-body);font-size:14px;
-  }
-  .authCard .btn{width:100%;justify-content:center;margin-top:4px;}
-  .authSwitch{font-size:13px;color:var(--ink-soft);margin:14px 0 0;}
-  .authSwitch a{color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;}
-  .authStatus{font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;min-height:16px;}
 
   #dropOverlay{
     position:fixed;inset:0;background:rgba(17,17,17,0.88);
@@ -175,21 +157,9 @@
 </head>
 <body>
 
-<div id="authGate" class="authGate">
-  <div class="authCard">
-    <span class="eyebrow">PNG → ICON</span>
-    <h2 id="authTitle">로그인</h2>
-    <input type="email" id="authEmail" placeholder="이메일" autocomplete="email">
-    <input type="password" id="authPassword" placeholder="비밀번호" autocomplete="current-password">
-    <button class="btn btn-accent" id="authSubmitBtn">로그인</button>
-    <p class="authSwitch">계정이 없으신가요? <a href="#" id="authSwitchLink">회원가입</a></p>
-    <p class="authStatus" id="authStatus"></p>
-  </div>
-</div>
-
 <div id="dropOverlay"><span>여기에 놓아주세요</span></div>
 
-<div class="app" id="appRoot" style="display:none;">
+<div class="app">
 
   <header class="top">
     <div class="brand">
@@ -199,7 +169,6 @@
     </div>
     <div style="display:flex;gap:8px;align-items:flex-end;">
       <button class="btn btn-ghost addMoreBtn" id="addMoreBtn">+ 파일 추가</button>
-      <button class="btn btn-ghost" id="logoutBtn" style="display:none;">로그아웃</button>
     </div>
   </header>
 
@@ -293,81 +262,10 @@
 <input type="file" id="fileInput" accept="image/png" multiple hidden>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 (function(){
   "use strict";
-
-  /* ===== Supabase 설정: 본인 프로젝트 값으로 꼭 바꿔주세요 =====
-     Supabase 대시보드 > Project Settings > API 에서 확인 가능 */
-  const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
-  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_PUBLIC_KEY';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  let authMode = 'signin';
-  const authGate = document.getElementById('authGate');
-  const appRoot = document.getElementById('appRoot');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const authTitle = document.getElementById('authTitle');
-  const authEmail = document.getElementById('authEmail');
-  const authPassword = document.getElementById('authPassword');
-  const authSubmitBtn = document.getElementById('authSubmitBtn');
-  const authSwitchLink = document.getElementById('authSwitchLink');
-  const authStatus = document.getElementById('authStatus');
-
-  function showApp(){
-    authGate.style.display = 'none';
-    appRoot.style.display = 'block';
-    logoutBtn.style.display = 'inline-flex';
-  }
-  function showAuthGate(){
-    authGate.style.display = 'flex';
-    appRoot.style.display = 'none';
-    logoutBtn.style.display = 'none';
-  }
-  function setAuthMode(mode){
-    authMode = mode;
-    authTitle.textContent = mode === 'signin' ? '로그인' : '회원가입';
-    authSubmitBtn.textContent = mode === 'signin' ? '로그인' : '회원가입';
-    authSwitchLink.textContent = mode === 'signin' ? '회원가입' : '로그인';
-    authStatus.textContent = '';
-  }
-  authSwitchLink.addEventListener('click', e => {
-    e.preventDefault();
-    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-  });
-
-  authSubmitBtn.addEventListener('click', async () => {
-    const email = authEmail.value.trim();
-    const password = authPassword.value;
-    if (!email || !password){ authStatus.textContent = '이메일과 비밀번호를 입력해주세요.'; return; }
-    authSubmitBtn.disabled = true;
-    authStatus.textContent = '처리 중…';
-    try{
-      if (authMode === 'signin'){
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) authStatus.textContent = error.message;
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) authStatus.textContent = error.message;
-        else authStatus.textContent = '가입 확인 메일을 보냈어요. 메일함을 확인해주세요.';
-      }
-    } finally {
-      authSubmitBtn.disabled = false;
-    }
-  });
-
-  logoutBtn.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-  });
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session) showApp(); else showAuthGate();
-  });
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session) showApp(); else showAuthGate();
-  });
 
 
   /* ---------------- basic source / right-click deterrents ----------------
