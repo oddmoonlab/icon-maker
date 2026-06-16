@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>PNG 아이콘 메이커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --bg-soft:#F3F3F3;
+    --card:#FFFFFF;
+    --ink:#111111;
+    --ink-soft:#666666;
+    --ink-faint:#A6A6A6;
+    --accent:#111111;
+    --accent-ink:#FFFFFF;
+    --line:rgba(17,17,17,0.14);
+    --line-strong:#111111;
+    --check-a:#FFFFFF;
+    --check-b:#E6E6E6;
+    --radius-lg:22px;
+    --radius-md:16px;
+    --radius-sm:10px;
+    --font-display:'Space Grotesk','Noto Sans KR',sans-serif;
+    --font-body:'Noto Sans KR',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    -webkit-user-select:none; user-select:none;
+  }
+  input, textarea, select{ -webkit-user-select:text; user-select:text; }
+  .app{max-width:1080px;margin:0 auto;padding:30px 18px 70px;}
+
+  header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px;}
+  .brand .eyebrow{
+    display:inline-block;background:#111;color:#fff;font-family:var(--font-mono);
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;
+    border-radius:999px;margin:0 0 10px;
+  }
+  .brand h1{font-family:var(--font-display);font-weight:700;font-size:clamp(22px,4vw,30px);margin:0 0 6px;letter-spacing:-0.01em;}
+  .brand p.sub{margin:0;color:var(--ink-soft);font-size:14px;max-width:480px;line-height:1.5;}
+  .addMoreBtn{display:none;}
+
+  .btn{
+    font-family:var(--font-body);font-weight:700;font-size:14px;
+    border:2px solid transparent;border-radius:999px;padding:11px 20px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:transform .12s ease, opacity .15s ease;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .btn-accent{background:var(--accent);color:var(--accent-ink);}
+  .btn-outline{background:#fff;color:var(--ink);border-color:#111;}
+  .btn-ghost{background:var(--card);color:var(--ink);border-color:var(--line-strong);}
+  .btn-icon{width:40px;height:40px;border-radius:50%;padding:0;justify-content:center;background:var(--card);border:2px solid var(--line-strong);font-size:18px;}
+  .btn-sm{padding:8px 14px;font-size:13px;}
+
+  /* ---------- Drag overlay ---------- */
+  /* ---------- Auth gate ---------- */
+  .authGate{
+    position:fixed;inset:0;background:var(--bg-soft);display:flex;
+    align-items:center;justify-content:center;z-index:60;padding:20px;
+  }
+  .authCard{
+    width:100%;max-width:340px;background:#fff;border:2px solid var(--line-strong);
+    border-radius:var(--radius-lg);padding:30px 26px;text-align:center;
+  }
+  .authCard h2{font-family:var(--font-display);font-size:20px;margin:14px 0 18px;}
+  .authCard input{
+    width:100%;padding:12px 14px;margin-bottom:10px;border-radius:10px;
+    border:2px solid var(--line-strong);font-family:var(--font-body);font-size:14px;
+  }
+  .authCard .btn{width:100%;justify-content:center;margin-top:4px;}
+  .authSwitch{font-size:13px;color:var(--ink-soft);margin:14px 0 0;}
+  .authSwitch a{color:var(--ink);font-weight:700;text-decoration:underline;cursor:pointer;}
+  .authStatus{font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;min-height:16px;}
+
+  #dropOverlay{
+    position:fixed;inset:0;background:rgba(17,17,17,0.88);
+    display:flex;align-items:center;justify-content:center;z-index:50;
+    opacity:0;pointer-events:none;transition:opacity .15s ease;
+  }
+  #dropOverlay.active{opacity:1;}
+  #dropOverlay span{color:#fff;font-family:var(--font-display);font-size:26px;font-weight:700;
+    border:2.5px dashed rgba(255,255,255,.6);border-radius:24px;padding:46px 64px;}
+
+  /* ---------- counter / nav ---------- */
+  #counterRow{display:none;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  #counterRow.show{display:flex;}
+  #counterRow .count{font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:.02em;
+    background:var(--card);border:2px solid var(--line-strong);border-radius:999px;padding:8px 16px;}
+  #counterRow .count b{color:var(--accent);}
+  #counterRow .fname{font-size:13px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;max-width:220px;}
+  #counterRow .spacer{flex:1;}
+  .removeBtn{background:none;border:none;color:var(--ink-faint);font-size:13px;cursor:pointer;
+    text-decoration:underline;padding:4px;margin-top:4px;}
+
+  /* ---------- 3-column grid, 2.5 : 5 : 2.5 ---------- */
+  .grid{display:grid;grid-template-columns:2.5fr 5fr 2.5fr;gap:20px;align-items:start;}
+  @media (max-width:980px){.grid{grid-template-columns:1fr;}}
+  .subSection{margin-top:26px;}
+
+  .card{background:var(--card);border-radius:var(--radius-lg);padding:20px;border:2px solid var(--line-strong);}
+  .panelTitle{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 14px;}
+
+  /* ---------- Column 1: desktop preview ---------- */
+  .desktopStage{
+    border-radius:18px;padding:28px 14px 18px;
+    background:linear-gradient(165deg,#2c2c2c,#161616);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+  }
+  .iconSlot{position:relative;width:96px;height:96px;}
+  #folderPlaceholder{width:100%;height:100%;display:block;filter:drop-shadow(0 8px 12px rgba(0,0,0,.5));}
+  #mockCanvas{width:100%;height:100%;display:none;border-radius:20px;box-shadow:0 4px 10px rgba(0,0,0,.35);}
+  #mockLabel{font-family:var(--font-body);font-size:13px;font-weight:500;color:#ffffff;letter-spacing:.01em;}
+
+  /* ---------- Column 2: crop (항상 표시) ---------- */
+  #cropTool{display:flex;width:100%;flex-direction:column;align-items:center;gap:16px;}
+  .stageFrame{
+    width:100%;max-width:380px;aspect-ratio:1/1;border-radius:24px;overflow:hidden;
+    box-shadow:0 0 0 2px #111;touch-action:none;cursor:grab;
+  }
+  .stageFrame:active{cursor:grabbing;}
+  #previewCanvas{width:100%;height:100%;display:block;touch-action:none;}
+  .zoomRow{width:100%;max-width:380px;display:flex;align-items:center;gap:10px;}
+  .zoomRow input[type=range]{flex:1;accent-color:var(--ink);}
+  .zoomRow .zlabel{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);}
+
+  /* ---------- Column 3: 이미지 추가 + 테두리 + 저장 ---------- */
+  #dropZoneInline{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
+    border:2.5px dashed var(--line-strong);border-radius:16px;background:var(--bg-soft);padding:18px 14px;}
+  #dropZoneInline .checker-icon{flex:0 0 auto;width:36px;height:36px;border-radius:10px;overflow:hidden;box-shadow:0 0 0 2px #111;}
+  #dropZoneInline h2{font-family:var(--font-display);font-size:14.5px;margin:0 0 3px;}
+  #dropZoneInline p{color:var(--ink-soft);font-size:12px;margin:0 0 10px;}
+
+  /* ---------- Column 3: border + save ---------- */
+  .field{margin-bottom:22px;}
+  .hint{font-size:12px;color:var(--ink-faint);margin-top:8px;line-height:1.5;}
+  .borderRow{display:flex;align-items:center;gap:10px;}
+  .borderRow input[type=range]{flex:1;accent-color:#111;}
+  .borderRow input[type=number]{
+    width:58px;padding:8px 6px;border-radius:8px;border:2px solid #111;
+    font-family:var(--font-mono);font-size:13px;text-align:center;color:var(--ink);
+  }
+  .borderRow .unit{font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);}
+  .actionStack{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+  .actionStack .btn{width:100%;justify-content:center;}
+  .actionStack .btn:disabled{opacity:.35;}
+  #statusText{font-size:12.5px;color:var(--ink-soft);margin-top:10px;min-height:16px;font-family:var(--font-mono);}
+
+  /* ---------- Thumbnail strip ---------- */
+  #thumbStrip{display:none;gap:10px;overflow-x:auto;padding:18px 2px 4px;margin-top:6px;}
+  #thumbStrip.show{display:flex;}
+  .thumbItem{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;opacity:.5;transition:opacity .15s;}
+  .thumbItem.active{opacity:1;}
+  .thumbCanvasWrap{width:56px;height:56px;border-radius:13px;overflow:hidden;box-shadow:0 0 0 2px transparent;}
+  .thumbItem.active .thumbCanvasWrap{box-shadow:0 0 0 2px #111;}
+  .thumbCanvasWrap canvas{width:100%;height:100%;display:block;}
+  .thumbIndex{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);}
+
+  footer.note{margin-top:34px;text-align:center;}
+  footer.note p{margin:0 0 6px;font-size:12.5px;color:var(--ink-faint);line-height:1.6;}
+  footer.note .copyright{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);letter-spacing:.02em;}
+</style>
+</head>
+<body>
+
+<div id="authGate" class="authGate">
+  <div class="authCard">
+    <span class="eyebrow">PNG → ICON</span>
+    <h2 id="authTitle">로그인</h2>
+    <input type="email" id="authEmail" placeholder="이메일" autocomplete="email">
+    <input type="password" id="authPassword" placeholder="비밀번호" autocomplete="current-password">
+    <button class="btn btn-accent" id="authSubmitBtn">로그인</button>
+    <p class="authSwitch">계정이 없으신가요? <a href="#" id="authSwitchLink">회원가입</a></p>
+    <p class="authStatus" id="authStatus"></p>
+  </div>
+</div>
+
+<div id="dropOverlay"><span>여기에 놓아주세요</span></div>
+
+<div class="app" id="appRoot" style="display:none;">
+
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">PNG → ICON</span>
+      <h1>아이콘 메이커</h1>
+      <p class="sub">투명 PNG를 잘라 윈도우 폴더·데스크탑 아이콘(ICO)으로 바꿔보세요.</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;">
+      <button class="btn btn-ghost addMoreBtn" id="addMoreBtn">+ 파일 추가</button>
+      <button class="btn btn-ghost" id="logoutBtn" style="display:none;">로그아웃</button>
+    </div>
+  </header>
+
+  <div id="counterRow">
+    <button class="btn btn-icon" id="prevBtn">‹</button>
+    <span class="count"><b id="curNum">01</b> / <span id="totNum">01</span></span>
+    <button class="btn btn-icon" id="nextBtn">›</button>
+    <span class="fname" id="fnameLabel"></span>
+    <span class="spacer"></span>
+    <button class="removeBtn" id="removeBtn">이 이미지 삭제</button>
+  </div>
+
+  <div class="grid">
+
+    <!-- 1열: 바탕화면 미리보기 -->
+    <div class="card">
+      <p class="panelTitle">바탕화면 미리보기</p>
+      <div class="desktopStage">
+        <div class="iconSlot">
+          <svg id="folderPlaceholder" viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="10" width="38" height="14" rx="4" fill="#F0B23B"/>
+            <rect x="4" y="16" width="92" height="60" rx="6" fill="#F0B23B"/>
+            <rect x="4" y="23" width="92" height="53" rx="6" fill="#FFCB57"/>
+          </svg>
+          <canvas id="mockCanvas" width="208" height="208"></canvas>
+        </div>
+        <span id="mockLabel">폴더</span>
+      </div>
+    </div>
+
+    <!-- 2열: 이미지 크롭 (항상 표시) -->
+    <div class="card">
+      <p class="panelTitle">이미지 크롭</p>
+      <div id="cropTool">
+        <div class="stageFrame">
+          <canvas id="previewCanvas" width="480" height="480"></canvas>
+        </div>
+        <div class="zoomRow">
+          <span class="zlabel">축소</span>
+          <input type="range" id="zoomSlider" min="0" max="100" value="0" disabled>
+          <span class="zlabel">확대</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3열: 이미지 추가 + 테두리 + 저장 -->
+    <div class="card">
+      <p class="panelTitle">이미지 추가</p>
+      <div id="dropZoneInline">
+        <div class="checker-icon" id="emptyCheckerIcon"></div>
+        <h2>PNG 끌어다 놓기</h2>
+        <p>여러 장을 한 번에 추가할 수 있어요</p>
+        <label id="dropLabel" class="btn btn-accent btn-sm">파일 선택하기</label>
+      </div>
+
+      <div class="subSection">
+        <p class="panelTitle">테두리 (검은색)</p>
+        <div class="field">
+          <div class="borderRow">
+            <input type="range" id="borderSlider" min="0" max="80" value="16">
+            <input type="number" id="borderNumber" min="0" max="80" value="16">
+            <span class="unit">px</span>
+          </div>
+          <p class="hint">이미지 윤곽선을 따라 검은 테두리가 둘러져요. 0이면 테두리가 없어요.</p>
+        </div>
+      </div>
+
+      <div class="subSection">
+        <p class="panelTitle">아이콘 저장</p>
+        <p class="hint" style="margin-top:0;margin-bottom:14px;">16~256px 여러 크기를 한 ICO에 담아서, 작게 표시될 때도 깨지지 않아요.</p>
+        <div class="actionStack">
+          <button class="btn btn-accent" id="saveOneBtn" disabled>이 아이콘 저장 (ICO)</button>
+          <button class="btn btn-outline" id="saveAllBtn" disabled>전체 ZIP으로 저장</button>
+        </div>
+        <p id="statusText"></p>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="thumbStrip"></div>
+
+  <footer class="note">
+    <p>ICO 파일은 윈도우 폴더 · 바로가기 아이콘으로 바로 사용할 수 있어요</p>
+    <span class="copyright">© 2026 ODDMOON LAB · 유여진 강사. All rights reserved.</span>
+    <p style="margin-top:8px;">본 페이지의 코드, 디자인, 이미지를 무단으로 복제·수정·재배포하는 것을 금지합니다.</p>
+  </footer>
+
+</div>
+
+<input type="file" id="fileInput" accept="image/png" multiple hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===== Supabase 설정: 본인 프로젝트 값으로 꼭 바꿔주세요 =====
+     Supabase 대시보드 > Project Settings > API 에서 확인 가능 */
+  const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_PUBLIC_KEY';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let authMode = 'signin';
+  const authGate = document.getElementById('authGate');
+  const appRoot = document.getElementById('appRoot');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const authTitle = document.getElementById('authTitle');
+  const authEmail = document.getElementById('authEmail');
+  const authPassword = document.getElementById('authPassword');
+  const authSubmitBtn = document.getElementById('authSubmitBtn');
+  const authSwitchLink = document.getElementById('authSwitchLink');
+  const authStatus = document.getElementById('authStatus');
+
+  function showApp(){
+    authGate.style.display = 'none';
+    appRoot.style.display = 'block';
+    logoutBtn.style.display = 'inline-flex';
+  }
+  function showAuthGate(){
+    authGate.style.display = 'flex';
+    appRoot.style.display = 'none';
+    logoutBtn.style.display = 'none';
+  }
+  function setAuthMode(mode){
+    authMode = mode;
+    authTitle.textContent = mode === 'signin' ? '로그인' : '회원가입';
+    authSubmitBtn.textContent = mode === 'signin' ? '로그인' : '회원가입';
+    authSwitchLink.textContent = mode === 'signin' ? '회원가입' : '로그인';
+    authStatus.textContent = '';
+  }
+  authSwitchLink.addEventListener('click', e => {
+    e.preventDefault();
+    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+  });
+
+  authSubmitBtn.addEventListener('click', async () => {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    if (!email || !password){ authStatus.textContent = '이메일과 비밀번호를 입력해주세요.'; return; }
+    authSubmitBtn.disabled = true;
+    authStatus.textContent = '처리 중…';
+    try{
+      if (authMode === 'signin'){
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) authStatus.textContent = error.message;
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) authStatus.textContent = error.message;
+        else authStatus.textContent = '가입 확인 메일을 보냈어요. 메일함을 확인해주세요.';
+      }
+    } finally {
+      authSubmitBtn.disabled = false;
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+  });
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) showApp(); else showAuthGate();
+  });
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) showApp(); else showAuthGate();
+  });
+
+
+  /* ---------------- basic source / right-click deterrents ----------------
+     참고: 클라이언트 JS로 막는 방식이라 100% 차단은 아니고, 가벼운 방지 장치예요. */
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    const blockedCombo =
+      e.key === 'F12' ||
+      (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
+      (e.ctrlKey && e.key.toLowerCase() === 'u');
+    if (blockedCombo) e.preventDefault();
+  });
+  document.addEventListener('dragstart', e => {
+    if (e.target.tagName === 'IMG') e.preventDefault();
+  });
+
+  /* ---------------- utils ---------------- */
+  function drawChecker(ctx,size,cell){
+    cell = cell || Math.max(8, Math.round(size/24));
+    for(let y=0;y<size;y+=cell){
+      for(let x=0;x<size;x+=cell){
+        const alt = (((x/cell)|0)+((y/cell)|0))%2===0;
+        ctx.fillStyle = alt ? '#ffffff' : '#e6e6e6';
+        ctx.fillRect(x,y,cell,cell);
+      }
+    }
+  }
+
+  function computeDrawRect(win, destSize, nw, nh){
+    const srcLeft = win.cx - win.size/2;
+    const srcTop  = win.cy - win.size/2;
+    const ix1 = Math.max(srcLeft, 0);
+    const iy1 = Math.max(srcTop, 0);
+    const ix2 = Math.min(srcLeft + win.size, nw);
+    const iy2 = Math.min(srcTop  + win.size, nh);
+    if (ix2 <= ix1 || iy2 <= iy1) return null;
+    const scale = destSize / win.size;
+    return {
+      sx: ix1, sy: iy1, sw: ix2-ix1, sh: iy2-iy1,
+      dx: (ix1-srcLeft)*scale, dy: (iy1-srcTop)*scale,
+      dw: (ix2-ix1)*scale, dh: (iy2-iy1)*scale
+    };
+  }
+
+  function canvasToBlob(canvas){
+    return new Promise(res => canvas.toBlob(res, 'image/png'));
+  }
+
+  function downloadBlob(blob, name){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }
+
+  function sanitizeName(s){
+    return s.replace(/\.[Pp][Nn][Gg]$/,'').replace(/[\\/:*?"<>|]/g,'_').trim() || 'icon';
+  }
+
+  /* ---- ICO builder: 크롭+테두리까지 적용된 캔버스를 PNG로 압축해서
+     그대로 ICO 컨테이너에 패킹 (Vista 이후 표준 방식, Convertico와 동일한 인코딩) ---- */
+  async function buildICOBlob(sizedCanvases){
+    const entries = await Promise.all(sizedCanvases.map(async sc => {
+      const blob = await canvasToBlob(sc.canvas);
+      const buf = await blob.arrayBuffer();
+      return { size: sc.size, buf };
+    }));
+    const count = entries.length;
+    const headerSize = 6 + 16*count;
+    let offset = headerSize;
+    const head = new Uint8Array(headerSize);
+    const dv = new DataView(head.buffer);
+    dv.setUint16(0,0,true);
+    dv.setUint16(2,1,true);
+    dv.setUint16(4,count,true);
+    let entryOff = 6;
+    for (let i=0;i<count;i++){
+      const wh = entries[i].size>=256 ? 0 : entries[i].size;
+      dv.setUint8(entryOff+0, wh);
+      dv.setUint8(entryOff+1, wh);
+      dv.setUint8(entryOff+2, 0);
+      dv.setUint8(entryOff+3, 0);
+      dv.setUint16(entryOff+4, 1, true);
+      dv.setUint16(entryOff+6, 32, true);
+      dv.setUint32(entryOff+8, entries[i].buf.byteLength, true);
+      dv.setUint32(entryOff+12, offset, true);
+      entryOff += 16;
+      offset += entries[i].buf.byteLength;
+    }
+    const total = new Uint8Array(offset);
+    total.set(head, 0);
+    let pos = headerSize;
+    for (const e of entries){ total.set(new Uint8Array(e.buf), pos); pos += e.buf.byteLength; }
+    return new Blob([total], {type:'image/x-icon'});
+  }
+
+  /* ---- crop + white outline compose (transparent-background canvas) ---- */
+  /* 가장자리 반투명 픽셀이 테두리와 섞여 회색으로 보이거나, 회전 스탬프 방식에서
+     생기던 스캘럽(꽃잎) 잔상을 없애기 위해: 알파를 0/255로 정리한 뒤
+     가로/세로 두 번의 슬라이딴 윈도우 max-filter로 정확하고 매끈한 검은 테두리를 만든다 */
+  function applyBlackBorder(canvas, radiusFloat){
+    const w = canvas.width, h = canvas.height;
+    const radius = Math.max(1, Math.round(radiusFloat));
+    const ctx = canvas.getContext('2d');
+    const id = ctx.getImageData(0,0,w,h);
+    const d = id.data;
+    const n = w*h;
+    const cutoff = 110;
+    const a0 = new Uint8Array(n);
+    for (let i=0;i<n;i++){
+      const ai = i*4+3;
+      if (d[ai] >= cutoff){ d[ai] = 255; a0[i] = 1; }
+      else { d[ai] = 0; a0[i] = 0; }
+    }
+
+    const a1 = new Uint8Array(n);
+    for (let y=0;y<h;y++){
+      let count = 0;
+      const rowOff = y*w;
+      for (let x=-radius;x<=radius;x++){ if (x>=0 && x<w && a0[rowOff+x]) count++; }
+      a1[rowOff] = count>0 ? 1 : 0;
+      for (let x=1;x<w;x++){
+        const leave = x-radius-1, enter = x+radius;
+        if (leave>=0 && a0[rowOff+leave]) count--;
+        if (enter<w && a0[rowOff+enter]) count++;
+        a1[rowOff+x] = count>0 ? 1 : 0;
+      }
+    }
+
+    const a2 = new Uint8Array(n);
+    for (let x=0;x<w;x++){
+      let count = 0;
+      for (let y=-radius;y<=radius;y++){ if (y>=0 && y<h && a1[y*w+x]) count++; }
+      a2[x] = count>0 ? 1 : 0;
+      for (let y=1;y<h;y++){
+        const leave = y-radius-1, enter = y+radius;
+        if (leave>=0 && a1[leave*w+x]) count--;
+        if (enter<h && a1[enter*w+x]) count++;
+        a2[y*w+x] = count>0 ? 1 : 0;
+      }
+    }
+
+    /* 테두리 바깥쪽 경계의 계단 현상을 줄이기 위해 살짝(반경 1px) 블러해서
+       부드러운 알파 그라데이션을 만든다. 그림과 테두리가 만나는 안쪽 경계는
+       원본 알파(a0)를 그대로 두기 때문에 거기는 계속 선명하게 유지된다. */
+    const br = 1;
+    const sum1 = new Int32Array(n);
+    for (let y=0;y<h;y++){
+      let sum=0; const rowOff=y*w;
+      for (let x=-br;x<=br;x++){ if (x>=0 && x<w) sum+=a2[rowOff+x]; }
+      sum1[rowOff]=sum;
+      for (let x=1;x<w;x++){
+        const leave=x-br-1, enter=x+br;
+        if (leave>=0) sum-=a2[rowOff+leave];
+        if (enter<w) sum+=a2[rowOff+enter];
+        sum1[rowOff+x]=sum;
+      }
+    }
+    const sum2 = new Int32Array(n);
+    for (let x=0;x<w;x++){
+      let sum=0;
+      for (let y=-br;y<=br;y++){ if (y>=0 && y<h) sum+=sum1[y*w+x]; }
+      sum2[x]=sum;
+      for (let y=1;y<h;y++){
+        const leave=y-br-1, enter=y+br;
+        if (leave>=0) sum-=sum1[leave*w+x];
+        if (enter<h) sum+=sum1[enter*w+x];
+        sum2[y*w+x]=sum;
+      }
+    }
+    function countDim(idx,len){ return Math.min(idx+br,len-1)-Math.max(idx-br,0)+1; }
+
+    for (let i=0;i<n;i++){
+      if (a0[i]) continue;
+      const y = (i/w)|0, x = i - y*w;
+      const count = countDim(x,w)*countDim(y,h);
+      const softAlpha = Math.round((sum2[i]/count)*255);
+      if (softAlpha > 0){
+        const o = i*4;
+        d[o]=0; d[o+1]=0; d[o+2]=0; d[o+3]=softAlpha;
+      }
+    }
+    ctx.putImageData(id,0,0);
+  }
+
+  function composeIcon(item, destSize, borderRefPx){
+    const borderPx = (borderRefPx/480) * destSize;
+    const inner = Math.max(1, destSize - borderPx*2);
+
+    const out = document.createElement('canvas'); out.width=destSize; out.height=destSize;
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    const r = computeDrawRect(item.win, inner, item.img.naturalWidth, item.img.naturalHeight);
+    if (r) octx.drawImage(item.img, r.sx,r.sy,r.sw,r.sh, r.dx+borderPx, r.dy+borderPx, r.dw, r.dh);
+
+    if (borderPx > 0.5){
+      applyBlackBorder(out, borderPx);
+    }
+
+    return out;
+  }
+
+  /* ---------------- state ---------------- */
+  let items = [];
+  let currentIndex = -1;
+  let idCounter = 0;
+  let borderWidth = 16;
+  let dragState = null;
+
+  /* ---------------- dom refs ---------------- */
+  const fileInput = document.getElementById('fileInput');
+  const dropLabel = document.getElementById('dropLabel');
+  const addMoreBtn = document.getElementById('addMoreBtn');
+  const dropOverlay = document.getElementById('dropOverlay');
+  const dropZoneInline = document.getElementById('dropZoneInline');
+  const cropTool = document.getElementById('cropTool');
+
+  const counterRow = document.getElementById('counterRow');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const curNum = document.getElementById('curNum');
+  const totNum = document.getElementById('totNum');
+  const fnameLabel = document.getElementById('fnameLabel');
+  const removeBtn = document.getElementById('removeBtn');
+
+  const previewCanvas = document.getElementById('previewCanvas');
+  const zoomSlider = document.getElementById('zoomSlider');
+
+  const folderPlaceholder = document.getElementById('folderPlaceholder');
+  const mockCanvas = document.getElementById('mockCanvas');
+  const mockLabel = document.getElementById('mockLabel');
+
+  const borderSlider = document.getElementById('borderSlider');
+  const borderNumber = document.getElementById('borderNumber');
+  const saveOneBtn = document.getElementById('saveOneBtn');
+  const saveAllBtn = document.getElementById('saveAllBtn');
+  const statusText = document.getElementById('statusText');
+  const thumbStrip = document.getElementById('thumbStrip');
+
+  mockLabel.textContent = '폴더';
+
+  /* draw empty-state checker icon once */
+  (function(){
+    const c = document.createElement('canvas'); c.width=48;c.height=48;
+    const ctx = c.getContext('2d'); drawChecker(ctx,48,6);
+    document.getElementById('emptyCheckerIcon').appendChild(c);
+    c.style.width='100%'; c.style.height='100%'; c.style.display='block';
+  })();
+
+  /* ---------------- zoom slider math (crop window, independent of border) ---------------- */
+  function bounds(item){
+    const nw = item.img.naturalWidth, nh = item.img.naturalHeight;
+    return { maxSize: Math.max(nw,nh)*1.15, minSize: Math.min(nw,nh)*0.18 };
+  }
+  function sliderFromSize(item){
+    const {maxSize,minSize} = bounds(item);
+    const t = (maxSize - item.win.size) / (maxSize - minSize);
+    return Math.round(Math.min(1,Math.max(0,t))*100);
+  }
+  function sizeFromSlider(item,val){
+    const {maxSize,minSize} = bounds(item);
+    return maxSize - (maxSize-minSize)*(val/100);
+  }
+
+  /* ---------------- rendering ---------------- */
+  function paintDisplay(canvasEl, item, withChecker){
+    const destSize = canvasEl.width;
+    const ctx = canvasEl.getContext('2d');
+    ctx.clearRect(0,0,destSize,destSize);
+    if (withChecker) drawChecker(ctx, destSize);
+    const composed = composeIcon(item, destSize, borderWidth);
+    ctx.drawImage(composed, 0, 0);
+  }
+
+  function renderMock(){
+    if (currentIndex >= 0){
+      paintDisplay(mockCanvas, items[currentIndex], false);
+      mockCanvas.style.display = 'block';
+      folderPlaceholder.style.display = 'none';
+    } else {
+      mockCanvas.style.display = 'none';
+      folderPlaceholder.style.display = 'block';
+    }
+  }
+
+  function renderStage(){
+    if (currentIndex < 0){
+      const ctx = previewCanvas.getContext('2d');
+      ctx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
+      drawChecker(ctx, previewCanvas.width);
+      renderMock();
+      return;
+    }
+    paintDisplay(previewCanvas, items[currentIndex], true);
+    renderMock();
+  }
+
+  function renderCounter(){
+    const n = items.length;
+    curNum.textContent = String(currentIndex+1).padStart(2,'0');
+    totNum.textContent = String(n).padStart(2,'0');
+    fnameLabel.textContent = currentIndex>=0 ? items[currentIndex].fileName : '';
+    prevBtn.disabled = currentIndex<=0;
+    nextBtn.disabled = currentIndex>=n-1;
+  }
+
+  function drawThumb(item){
+    const c = document.createElement('canvas'); c.width=112; c.height=112;
+    paintDisplay(c, item, true);
+    return c;
+  }
+
+  function renderThumbs(){
+    thumbStrip.innerHTML = '';
+    items.forEach((item, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'thumbItem' + (i===currentIndex ? ' active' : '');
+      const cwrap = document.createElement('div');
+      cwrap.className = 'thumbCanvasWrap';
+      cwrap.appendChild(drawThumb(item));
+      const idx = document.createElement('span');
+      idx.className = 'thumbIndex';
+      idx.textContent = String(i+1).padStart(2,'0');
+      wrap.appendChild(cwrap);
+      wrap.appendChild(idx);
+      wrap.addEventListener('click', ()=>switchTo(i));
+      thumbStrip.appendChild(wrap);
+    });
+  }
+
+  function updateThumbAt(i){
+    const wrap = thumbStrip.children[i];
+    if (!wrap) return;
+    const cwrap = wrap.querySelector('.thumbCanvasWrap');
+    cwrap.innerHTML = '';
+    cwrap.appendChild(drawThumb(items[i]));
+  }
+
+  function renderVisibility(){
+    const has = items.length > 0;
+    counterRow.classList.toggle('show', has);
+    thumbStrip.classList.toggle('show', has);
+    addMoreBtn.style.display = has ? 'inline-flex' : 'none';
+    saveOneBtn.disabled = !has;
+    saveAllBtn.disabled = !has;
+    zoomSlider.disabled = !has;
+  }
+
+  function renderAll(){
+    renderVisibility();
+    if (currentIndex>=0){
+      zoomSlider.value = sliderFromSize(items[currentIndex]);
+    }
+    renderStage();
+    renderCounter();
+  }
+
+  /* ---------------- navigation ---------------- */
+  function switchTo(i){
+    if (i<0 || i>=items.length) return;
+    currentIndex = i;
+    zoomSlider.value = sliderFromSize(items[currentIndex]);
+    renderStage();
+    renderCounter();
+    Array.from(thumbStrip.children).forEach((el,idx)=>{
+      el.classList.toggle('active', idx===currentIndex);
+    });
+  }
+  function prev(){ if (currentIndex>0) switchTo(currentIndex-1); }
+  function next(){ if (currentIndex<items.length-1) switchTo(currentIndex+1); }
+
+  /* ---------------- file handling ---------------- */
+  function addFiles(fileList){
+    const files = Array.from(fileList).filter(f =>
+      f.type === 'image/png' || /\.png$/i.test(f.name)
+    );
+    files.forEach(file => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const size = Math.min(img.naturalWidth, img.naturalHeight);
+        const item = {
+          id: 'i'+(idCounter++),
+          fileName: file.name,
+          img,
+          win: { cx: img.naturalWidth/2, cy: img.naturalHeight/2, size }
+        };
+        items.push(item);
+        if (currentIndex === -1) currentIndex = 0;
+        renderThumbs();
+        renderAll();
+      };
+      img.onerror = () => URL.revokeObjectURL(url);
+      img.src = url;
+    });
+  }
+
+  function removeCurrent(){
+    if (currentIndex < 0) return;
+    items.splice(currentIndex,1);
+    if (currentIndex >= items.length) currentIndex = items.length-1;
+    renderThumbs();
+    renderAll();
+  }
+
+  /* ---------------- export (ICO only) ---------------- */
+  async function exportItemICO(item){
+    const sizes = [16, 32, 48, 64, 128, 256];
+    const sizedCanvases = sizes.map(s => ({ size: s, canvas: composeIcon(item, s, borderWidth) }));
+    return await buildICOBlob(sizedCanvases);
+  }
+  function filenameFor(item){
+    return sanitizeName(item.fileName) + '_icon.ico';
+  }
+
+  /* ---------------- events: drag / drop / pick ---------------- */
+  dropLabel.addEventListener('click', ()=>fileInput.click());
+  addMoreBtn.addEventListener('click', ()=>fileInput.click());
+  fileInput.addEventListener('change', e => {
+    addFiles(e.target.files);
+    e.target.value = '';
+  });
+
+  let dragCounter = 0;
+  ['dragenter','dragover'].forEach(evt => document.addEventListener(evt, e => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    dragCounter++;
+    dropOverlay.classList.add('active');
+  }));
+  document.addEventListener('dragleave', e => {
+    dragCounter = Math.max(0, dragCounter-1);
+    if (dragCounter===0) dropOverlay.classList.remove('active');
+  });
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+    if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  /* ---------------- events: nav ---------------- */
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+  removeBtn.addEventListener('click', removeCurrent);
+  document.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag==='INPUT' || tag==='SELECT' || tag==='TEXTAREA') return;
+    if (e.key === 'ArrowLeft') prev();
+    if (e.key === 'ArrowRight') next();
+  });
+
+  /* ---------------- events: crop drag ---------------- */
+  previewCanvas.addEventListener('pointerdown', e => {
+    if (currentIndex < 0) return;
+    previewCanvas.setPointerCapture(e.pointerId);
+    const item = items[currentIndex];
+    dragState = {
+      startX: e.clientX, startY: e.clientY,
+      startCx: item.win.cx, startCy: item.win.cy,
+      rectWidth: previewCanvas.getBoundingClientRect().width
+    };
+  });
+  previewCanvas.addEventListener('pointermove', e => {
+    if (!dragState) return;
+    const item = items[currentIndex];
+    const factor = item.win.size / dragState.rectWidth;
+    const dx = (e.clientX - dragState.startX) * factor;
+    const dy = (e.clientY - dragState.startY) * factor;
+    item.win.cx = dragState.startCx - dx;
+    item.win.cy = dragState.startCy - dy;
+    renderStage();
+    updateThumbAt(currentIndex);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(evt =>
+    previewCanvas.addEventListener(evt, ()=>{ dragState = null; })
+  );
+
+  /* ---------------- events: zoom + quick actions ---------------- */
+  zoomSlider.addEventListener('input', () => {
+    if (currentIndex < 0) return;
+    const item = items[currentIndex];
+    item.win.size = sizeFromSlider(item, Number(zoomSlider.value));
+    renderStage();
+    updateThumbAt(currentIndex);
+  });
+
+  /* ---------------- events: border width ---------------- */
+  function setBorder(v){
+    v = Math.max(0, Math.min(80, Math.round(v)));
+    borderWidth = v;
+    borderSlider.value = v;
+    borderNumber.value = v;
+  }
+  function liveBorderUpdate(){
+    if (currentIndex>=0){ renderStage(); updateThumbAt(currentIndex); }
+  }
+  borderSlider.addEventListener('input', () => { setBorder(Number(borderSlider.value)); liveBorderUpdate(); });
+  borderSlider.addEventListener('change', () => { renderThumbs(); });
+  borderNumber.addEventListener('input', () => { setBorder(Number(borderNumber.value)||0); liveBorderUpdate(); });
+  borderNumber.addEventListener('change', () => { renderThumbs(); });
+
+  /* ---------------- events: save (ICO only) ---------------- */
+  saveOneBtn.addEventListener('click', async () => {
+    if (currentIndex < 0) return;
+    saveOneBtn.disabled = true;
+    statusText.textContent = '아이콘 만드는 중…';
+    try{
+      const item = items[currentIndex];
+      const blob = await exportItemICO(item);
+      downloadBlob(blob, filenameFor(item));
+      statusText.textContent = '저장 완료 ✓';
+    } finally {
+      saveOneBtn.disabled = false;
+      setTimeout(()=>{ statusText.textContent=''; }, 2500);
+    }
+  });
+
+  saveAllBtn.addEventListener('click', async () => {
+    if (items.length === 0) return;
+    saveAllBtn.disabled = true;
+    try{
+      const zip = new JSZip();
+      const used = new Set();
+      for (let i=0;i<items.length;i++){
+        statusText.textContent = `압축 중… (${i+1}/${items.length})`;
+        const item = items[i];
+        const blob = await exportItemICO(item);
+        let name = filenameFor(item);
+        let k = 2;
+        const base = name.replace(/\.ico$/,'');
+        while (used.has(name)){ name = `${base}_${k}.ico`; k++; }
+        used.add(name);
+        zip.file(name, blob);
+      }
+      statusText.textContent = 'ZIP 파일 만드는 중…';
+      const content = await zip.generateAsync({type:'blob'});
+      downloadBlob(content, 'icons.zip');
+      statusText.textContent = `${items.length}개 저장 완료 ✓`;
+    } finally {
+      saveAllBtn.disabled = items.length===0;
+      setTimeout(()=>{ statusText.textContent=''; }, 3000);
+    }
+  });
+
+  renderVisibility();
+  renderStage();
+})();
+</script>
+</body>
+</html>
