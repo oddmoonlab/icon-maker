@@ -125,16 +125,9 @@
   #dropZoneInline h2{font-family:var(--font-display);font-size:14.5px;margin:0 0 3px;}
   #dropZoneInline p{color:var(--ink-soft);font-size:12px;margin:0 0 10px;}
 
-  /* ---------- Column 3: border + save ---------- */
+  /* ---------- Column 3: save ---------- */
   .field{margin-bottom:22px;}
   .hint{font-size:12px;color:var(--ink-faint);margin-top:8px;line-height:1.5;}
-  .borderRow{display:flex;align-items:center;gap:10px;}
-  .borderRow input[type=range]{flex:1;accent-color:#111;}
-  .borderRow input[type=number]{
-    width:58px;padding:8px 6px;border-radius:8px;border:2px solid #111;
-    font-family:var(--font-mono);font-size:13px;text-align:center;color:var(--ink);
-  }
-  .borderRow .unit{font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);}
   .actionStack{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
   .actionStack .btn{width:100%;justify-content:center;}
   .actionStack .btn:disabled{opacity:.35;}
@@ -214,7 +207,7 @@
       </div>
     </div>
 
-    <!-- 3열: 이미지 추가 + 테두리 + 저장 -->
+    <!-- 3열: 이미지 추가 + 저장 -->
     <div class="card">
       <p class="panelTitle">이미지 추가</p>
       <div id="dropZoneInline">
@@ -222,18 +215,6 @@
         <h2>PNG 끌어다 놓기</h2>
         <p>여러 장을 한 번에 추가할 수 있어요</p>
         <label id="dropLabel" class="btn btn-accent btn-sm">파일 선택하기</label>
-      </div>
-
-      <div class="subSection">
-        <p class="panelTitle">테두리 (검은색)</p>
-        <div class="field">
-          <div class="borderRow">
-            <input type="range" id="borderSlider" min="0" max="80" value="16">
-            <input type="number" id="borderNumber" min="0" max="80" value="16">
-            <span class="unit">px</span>
-          </div>
-          <p class="hint">이미지 윤곽선을 따라 검은 테두리가 둘러져요. 0이면 테두리가 없어요.</p>
-        </div>
       </div>
 
       <div class="subSection">
@@ -364,110 +345,13 @@
     return new Blob([total], {type:'image/x-icon'});
   }
 
-  /* ---- crop + white outline compose (transparent-background canvas) ---- */
-  /* 가장자리 반투명 픽셀이 테두리와 섞여 회색으로 보이거나, 회전 스탬프 방식에서
-     생기던 스캘럽(꽃잎) 잔상을 없애기 위해: 알파를 0/255로 정리한 뒤
-     가로/세로 두 번의 슬라이딴 윈도우 max-filter로 정확하고 매끈한 검은 테두리를 만든다 */
-  function applyBlackBorder(canvas, radiusFloat){
-    const w = canvas.width, h = canvas.height;
-    const radius = Math.max(1, Math.round(radiusFloat));
-    const ctx = canvas.getContext('2d');
-    const id = ctx.getImageData(0,0,w,h);
-    const d = id.data;
-    const n = w*h;
-    const cutoff = 110;
-    const a0 = new Uint8Array(n);
-    for (let i=0;i<n;i++){
-      const ai = i*4+3;
-      if (d[ai] >= cutoff){ d[ai] = 255; a0[i] = 1; }
-      else { d[ai] = 0; a0[i] = 0; }
-    }
-
-    const a1 = new Uint8Array(n);
-    for (let y=0;y<h;y++){
-      let count = 0;
-      const rowOff = y*w;
-      for (let x=-radius;x<=radius;x++){ if (x>=0 && x<w && a0[rowOff+x]) count++; }
-      a1[rowOff] = count>0 ? 1 : 0;
-      for (let x=1;x<w;x++){
-        const leave = x-radius-1, enter = x+radius;
-        if (leave>=0 && a0[rowOff+leave]) count--;
-        if (enter<w && a0[rowOff+enter]) count++;
-        a1[rowOff+x] = count>0 ? 1 : 0;
-      }
-    }
-
-    const a2 = new Uint8Array(n);
-    for (let x=0;x<w;x++){
-      let count = 0;
-      for (let y=-radius;y<=radius;y++){ if (y>=0 && y<h && a1[y*w+x]) count++; }
-      a2[x] = count>0 ? 1 : 0;
-      for (let y=1;y<h;y++){
-        const leave = y-radius-1, enter = y+radius;
-        if (leave>=0 && a1[leave*w+x]) count--;
-        if (enter<h && a1[enter*w+x]) count++;
-        a2[y*w+x] = count>0 ? 1 : 0;
-      }
-    }
-
-    /* 테두리 바깥쪽 경계의 계단 현상을 줄이기 위해 살짝(반경 1px) 블러해서
-       부드러운 알파 그라데이션을 만든다. 그림과 테두리가 만나는 안쪽 경계는
-       원본 알파(a0)를 그대로 두기 때문에 거기는 계속 선명하게 유지된다. */
-    const br = 1;
-    const sum1 = new Int32Array(n);
-    for (let y=0;y<h;y++){
-      let sum=0; const rowOff=y*w;
-      for (let x=-br;x<=br;x++){ if (x>=0 && x<w) sum+=a2[rowOff+x]; }
-      sum1[rowOff]=sum;
-      for (let x=1;x<w;x++){
-        const leave=x-br-1, enter=x+br;
-        if (leave>=0) sum-=a2[rowOff+leave];
-        if (enter<w) sum+=a2[rowOff+enter];
-        sum1[rowOff+x]=sum;
-      }
-    }
-    const sum2 = new Int32Array(n);
-    for (let x=0;x<w;x++){
-      let sum=0;
-      for (let y=-br;y<=br;y++){ if (y>=0 && y<h) sum+=sum1[y*w+x]; }
-      sum2[x]=sum;
-      for (let y=1;y<h;y++){
-        const leave=y-br-1, enter=y+br;
-        if (leave>=0) sum-=sum1[leave*w+x];
-        if (enter<h) sum+=sum1[enter*w+x];
-        sum2[y*w+x]=sum;
-      }
-    }
-    function countDim(idx,len){ return Math.min(idx+br,len-1)-Math.max(idx-br,0)+1; }
-
-    for (let i=0;i<n;i++){
-      if (a0[i]) continue;
-      const y = (i/w)|0, x = i - y*w;
-      const count = countDim(x,w)*countDim(y,h);
-      const softAlpha = Math.round((sum2[i]/count)*255);
-      if (softAlpha > 0){
-        const o = i*4;
-        d[o]=0; d[o+1]=0; d[o+2]=0; d[o+3]=softAlpha;
-      }
-    }
-    ctx.putImageData(id,0,0);
-  }
-
-  function composeIcon(item, destSize, borderRefPx){
-    const borderPx = (borderRefPx/480) * destSize;
-    const inner = Math.max(1, destSize - borderPx*2);
-
+  function composeIcon(item, destSize){
     const out = document.createElement('canvas'); out.width=destSize; out.height=destSize;
     const octx = out.getContext('2d');
     octx.imageSmoothingEnabled = true;
     octx.imageSmoothingQuality = 'high';
-    const r = computeDrawRect(item.win, inner, item.img.naturalWidth, item.img.naturalHeight);
-    if (r) octx.drawImage(item.img, r.sx,r.sy,r.sw,r.sh, r.dx+borderPx, r.dy+borderPx, r.dw, r.dh);
-
-    if (borderPx > 0.5){
-      applyBlackBorder(out, borderPx);
-    }
-
+    const r = computeDrawRect(item.win, destSize, item.img.naturalWidth, item.img.naturalHeight);
+    if (r) octx.drawImage(item.img, r.sx,r.sy,r.sw,r.sh, r.dx, r.dy, r.dw, r.dh);
     return out;
   }
 
@@ -475,7 +359,6 @@
   let items = [];
   let currentIndex = -1;
   let idCounter = 0;
-  let borderWidth = 16;
   let dragState = null;
 
   /* ---------------- dom refs ---------------- */
@@ -501,8 +384,6 @@
   const mockCanvas = document.getElementById('mockCanvas');
   const mockLabel = document.getElementById('mockLabel');
 
-  const borderSlider = document.getElementById('borderSlider');
-  const borderNumber = document.getElementById('borderNumber');
   const saveOneBtn = document.getElementById('saveOneBtn');
   const saveAllBtn = document.getElementById('saveAllBtn');
   const statusText = document.getElementById('statusText');
@@ -518,7 +399,7 @@
     c.style.width='100%'; c.style.height='100%'; c.style.display='block';
   })();
 
-  /* ---------------- zoom slider math (crop window, independent of border) ---------------- */
+  /* ---------------- zoom slider math (crop window) ---------------- */
   function bounds(item){
     const nw = item.img.naturalWidth, nh = item.img.naturalHeight;
     return { maxSize: Math.max(nw,nh)*1.15, minSize: Math.min(nw,nh)*0.18 };
@@ -539,7 +420,7 @@
     const ctx = canvasEl.getContext('2d');
     ctx.clearRect(0,0,destSize,destSize);
     if (withChecker) drawChecker(ctx, destSize);
-    const composed = composeIcon(item, destSize, borderWidth);
+    const composed = composeIcon(item, destSize);
     ctx.drawImage(composed, 0, 0);
   }
 
@@ -677,7 +558,7 @@
   /* ---------------- export (ICO only) ---------------- */
   async function exportItemICO(item){
     const sizes = [16, 32, 48, 64, 128, 256];
-    const sizedCanvases = sizes.map(s => ({ size: s, canvas: composeIcon(item, s, borderWidth) }));
+    const sizedCanvases = sizes.map(s => ({ size: s, canvas: composeIcon(item, s) }));
     return await buildICOBlob(sizedCanvases);
   }
   function filenameFor(item){
@@ -755,21 +636,6 @@
     renderStage();
     updateThumbAt(currentIndex);
   });
-
-  /* ---------------- events: border width ---------------- */
-  function setBorder(v){
-    v = Math.max(0, Math.min(80, Math.round(v)));
-    borderWidth = v;
-    borderSlider.value = v;
-    borderNumber.value = v;
-  }
-  function liveBorderUpdate(){
-    if (currentIndex>=0){ renderStage(); updateThumbAt(currentIndex); }
-  }
-  borderSlider.addEventListener('input', () => { setBorder(Number(borderSlider.value)); liveBorderUpdate(); });
-  borderSlider.addEventListener('change', () => { renderThumbs(); });
-  borderNumber.addEventListener('input', () => { setBorder(Number(borderNumber.value)||0); liveBorderUpdate(); });
-  borderNumber.addEventListener('change', () => { renderThumbs(); });
 
   /* ---------------- events: save (ICO only) ---------------- */
   saveOneBtn.addEventListener('click', async () => {
